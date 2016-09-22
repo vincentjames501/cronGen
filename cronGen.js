@@ -1,11 +1,111 @@
-﻿
+
 
 (function ($) {
-    
+
     var resultsName = "";
     var inputElement;
     var displayElement;
-    
+
+    function initView(cron) {
+        //Utility Functions
+        function padLeft(input) {
+            var formattedInput = '' + input;
+            return formattedInput.length === 1 ? ('0' + formattedInput) : formattedInput;
+        }
+
+        function startsWith(str, substr) {
+            return str.indexOf(substr) === 0;
+        }
+
+        function includes(str, substr) {
+            return str.indexOf(substr) >= 0;
+        }
+
+        //Get our cron segments
+        var segments = cron.split(' ');
+
+        //Determine which tab to select
+        var tabToSelect = function () {
+            if (segments[2] === '*') {
+                return 'MinutesTab';
+            } else if (segments[3] === '1/1') {
+                return 'HourlyTab';
+            } else if (startsWith(segments[3], '1/') || (segments[3] === '?' && segments[5] === 'MON-FRI')) {
+                return 'DailyTab';
+            } else if (segments[3] === '?' && segments[4] === '*') {
+                return 'WeeklyTab';
+            } else if (startsWith(segments[4], '1/')) {
+                return 'MonthlyTab';
+            } else {
+                return 'YearlyTab';
+            }
+        }();
+
+        //Select the tab
+        $('#' + tabToSelect).click();
+
+        //Populate the data for the tab
+        if (tabToSelect === 'MinutesTab') {
+            $('#MinutesInput').val(segments[1].substring(2));
+        } else if (tabToSelect === 'HourlyTab') {
+            if (segments[2].startsWith('0/')) {
+                $('input[name="HourlyRadio"]:first').attr('checked', 'checked');
+                $('#HoursInput').val(segments[2].substring(2));
+            } else {
+                $('input[name="HourlyRadio"]:nth(1)').attr('checked', 'checked');
+                $('#AtHours').val(padLeft(segments[2]));
+                $('#AtMinutes').val(padLeft(segments[1]));
+            }
+        } else if (tabToSelect === 'DailyTab') {
+            if (segments[5] === 'MON-FRI') {
+                $('input[name="DailyRadio"]:nth(1)').attr('checked', 'checked');
+            } else {
+                $('input[name="DailyRadio"]:first').attr('checked', 'checked');
+                $('#DaysInput').val(segments[3].substring(2));
+            }
+            $('#DailyHours').val(padLeft(segments[2]));
+            $('#DailyMinutes').val(padLeft(segments[1]));
+        } else if (tabToSelect === 'WeeklyTab') {
+            segments[5].split(',').forEach(function (input) {
+                $('#Weekly').find('input[value="' + input + '"]').attr('checked', 'checked');
+            });
+            $('#WeeklyHours').val(padLeft(segments[2]));
+            $('#WeeklyMinutes').val(padLeft(segments[1]));
+        } else if (tabToSelect === 'MonthlyTab') {
+            if (includes(segments[5], '#')) {
+                $('input[name="MonthlyRadio"]:nth(1)').attr('checked', 'checked');
+                var vals = segments[5].split('#');
+                var weekName = vals[0];
+                var monthWeek = vals[1];
+                $('#WeekDay').val(monthWeek);
+                $('#DayInWeekOrder').val(weekName);
+                $('#EveryMonthInput').val(segments[4].substring(2));
+            } else {
+                $('input[name="MonthlyRadio"]:first').attr('checked', 'checked');
+                $('#DayOfMOnthInput').val(segments[3]);
+                $('#MonthInput').val(segments[4].substring(2));
+            }
+            $('#MonthlyHours').val(padLeft(segments[2]));
+            $('#MonthlyMinutes').val(padLeft(segments[1]));
+        } else {
+            if (includes(segments[5], '#')) {
+                $('input[name="YearlyRadio"]:nth(1)').attr('checked', 'checked');
+                var vals = segments[5].split('#');
+                var weekName = vals[0];
+                var monthWeek = vals[1];
+                $('#DayOrderInYear').val(monthWeek);
+                $('#DayWeekForYear').val(weekName);
+                $('#MonthsOfYear2').val(segments[4]);
+            } else {
+                $('input[name="YearlyRadio"]:first').attr('checked', 'checked');
+                $('#MonthsOfYear').val(segments[4]);
+                $('#YearInput').val(segments[3]);
+            }
+            $('#YearlyHours').val(padLeft(segments[2]));
+            $('#YearlyMinutes').val(padLeft(segments[1]));
+        }
+    }
+
     $.fn.extend({
         cronGen: function () {
             //create top menu
@@ -163,7 +263,7 @@
             $(yearlyTab).appendTo(tabContent);
             $(tabContent).appendTo(span12);
 
-            //creating the button and results input           
+            //creating the button and results input
             resultsName = $(this).prop("id");
             $(this).prop("name", resultsName);
 
@@ -171,7 +271,7 @@
             $(row).appendTo(container);
             $(container).appendTo(mainDiv);
             $(cronContainer).append(mainDiv);
-            
+
             var that = $(this);
 
             // Hide the original input
@@ -204,28 +304,32 @@
 
             }).on('click', function (e) {
                 e.preventDefault();
-                
+
                 fillDataOfMinutesAndHoursSelectOptions();
                 fillDayWeekInMonth();
                 fillInWeekDays();
                 fillInMonths();
+
+                var currentCron = $(inputElement).val();
+                if (currentCron) {
+                    setTimeout(function() {
+                        initView(currentCron);
+                    }, 0);
+                }
+
                 $('#CronGenTabs a').click(function (e) {
                     e.preventDefault();
                     $(this).tab('show');
-                    //generate();
                 });
-                $("#CronGenMainDiv select,input").change(function (e) {
+                
+                $("#CronGenMainDiv select, #CronGenMainDiv input").change(function (e) {
                     generate();
                 });
-                $("#CronGenMainDiv input").focus(function (e) {
-                    generate();
-                });
-                //generate();
             });
             return;
         }
     });
-    
+
 
     var fillInMonths = function () {
         var days = [
@@ -358,4 +462,3 @@
     };
 
 })(jQuery);
-
